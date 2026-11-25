@@ -1,64 +1,46 @@
-#include <Geode/Geode.hpp>
-#include <Geode/modify/CCParticleSystem.hpp>
-#include <atomic>
-#include "Platform.hpp"
-
-using namespace geode::prelude;
-
-namespace {
-	std::atomic<bool> g_reduceParticles{true};
-	std::atomic<int>  g_particleSkip{2};
-}
-
-$on_mod(Loaded) {
-	auto mod = Mod::get();
-
-	g_reduceParticles = mod->getSettingValue<bool>("reduce-particles");
-	g_particleSkip    = static_cast<int>(mod->getSettingValue<int64_t>("particle-skip"));
-
-	listenForSettingChanges<bool>("reduce-particles", [](bool v) {
-		g_reduceParticles = v;
-	});
-	listenForSettingChanges<int64_t>("particle-skip", [](int64_t v) {
-		g_particleSkip = static_cast<int>(v);
-	});
-
-	litemac::applyMacTweaks(
-		mod->getSettingValue<bool>("prevent-app-nap"),
-		mod->getSettingValue<bool>("high-priority")
-	);
-}
-
-class $modify(LiteParticleSystem, CCParticleSystem) {
-	void update(float dt) {
-		int skip = g_particleSkip.load();
-
-		if (!g_reduceParticles.load() || skip <= 1 || !PlayLayer::get()) {
-			CCParticleSystem::update(dt);
-			return;
+{
+	"geode": "6.0.0",
+	"gd": {
+		"mac": "*"
+	},
+	"id": "tuusuario.gdlitemac",
+	"name": "GD Lite (Mac)",
+	"version": "v1.0.0",
+	"developer": "TuUsuario",
+	"description": "Ligero ajuste de rendimiento para Geometry Dash en macOS: menos coste de partículas y mejor prioridad de hilo.",
+	"tags": [
+		"performance",
+		"utility"
+	],
+	"settings": {
+		"reduce-particles": {
+			"name": "Reducir coste de partículas",
+			"description": "Actualiza los sistemas de partículas solo una de cada N frames dentro de un nivel. Desactivado por defecto para evitar conflictos con otros mods que usen partículas.",
+			"type": "bool",
+			"default": false
+		},
+		"particle-skip": {
+			"name": "Actualizar partículas cada N frames",
+			"description": "2 = la mitad de actualizaciones, 3 = un tercio, etc.",
+			"type": "int",
+			"default": 2,
+			"min": 1,
+			"max": 4,
+			"control": {
+				"slider": true
+			}
+		},
+		"prevent-app-nap": {
+			"name": "Desactivar App Nap",
+			"description": "Pide a macOS que no limite temporizadores ni CPU del juego. Requiere reiniciar el juego.",
+			"type": "bool",
+			"default": true
+		},
+		"high-priority": {
+			"name": "Hilo principal con prioridad alta",
+			"description": "Marca el hilo principal como USER_INTERACTIVE (en Apple Silicon favorece los núcleos de rendimiento). Requiere reiniciar el juego.",
+			"type": "bool",
+			"default": true
 		}
-
-		if (CCDirector::get()->getTotalFrames() % skip != 0) return;
-		CCParticleSystem::update(dt * skip);
 	}
-};
-
-	void update(float dt) {
-		int skip = g_particleSkip.load();
-
-		if (!g_reduceParticles.load() || skip <= 1 || !PlayLayer::get()) {
-			CCParticleSystem::update(dt);
-			return;
-		}
-
-		auto f = m_fields.self();
-		f->m_accum += dt;
-
-		if (++f->m_tick < skip) return;
-
-		float total = f->m_accum;
-		f->m_tick  = 0;
-		f->m_accum = 0.f;
-		CCParticleSystem::update(total);
-	}
-};
+}
