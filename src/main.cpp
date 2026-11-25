@@ -30,10 +30,18 @@ $on_mod(Loaded) {
 }
 
 class $modify(LiteParticleSystem, CCParticleSystem) {
-	struct Fields {
-		int   m_tick  = 0;
-		float m_accum = 0.f;
-	};
+	void update(float dt) {
+		int skip = g_particleSkip.load();
+
+		if (!g_reduceParticles.load() || skip <= 1 || !PlayLayer::get()) {
+			CCParticleSystem::update(dt);
+			return;
+		}
+
+		if (CCDirector::get()->getTotalFrames() % skip != 0) return;
+		CCParticleSystem::update(dt * skip);
+	}
+};
 
 	void update(float dt) {
 		int skip = g_particleSkip.load();
